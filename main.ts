@@ -2,6 +2,7 @@ import {config} from "dotenv";
 
 config();
 
+import {LLMChain} from "langchain/chains";
 import {OpenAI} from "langchain/llms/openai";
 import {ChatOpenAI} from "langchain/chat_models/openai";
 import {HumanMessage, LLMResult} from "langchain/schema";
@@ -276,6 +277,11 @@ const prediction10 = async () => {
     partialVariables: {format_instructions: formatInstructions},
   });
 
-  const model = new OpenAI({ temperature: 0 });
+  const model = new OpenAI({temperature: 0});
 };
 
+// We can construct an LLMChain from a PromptTemplate and an LLM.
+const model = new OpenAI({temperature: 0});
+const prompt = PromptTemplate.fromTemplate(
+  "What is a good name for a company that makes {product}?"
+);
