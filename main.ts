@@ -5,6 +5,7 @@ config();
 import {OpenAI} from "langchain/llms/openai";
 import {ChatOpenAI} from "langchain/chat_models/openai";
 import {HumanMessage, LLMResult} from "langchain/schema";
+import {StructuredOutputParser} from "langchain/output_parsers";
 import {
   ChatPromptTemplate,
   ConditionalPromptSelector,
@@ -259,4 +260,22 @@ const prediction9 = async () => {
   );
 };
 
-prediction9()
+const prediction10 = async () => {
+  // With a `StructuredOutputParser` we can define a schema for the output.
+  const parser = StructuredOutputParser.fromNamesAndDescriptions({
+    answer: "answer to the user's question",
+    source: "source used to answer the user's question, should be a website.",
+  });
+
+  const formatInstructions = parser.getFormatInstructions();
+
+  const prompt = new PromptTemplate({
+    template:
+      "Answer the users question as best as possible.\n{format_instructions}\n{question}",
+    inputVariables: ["question"],
+    partialVariables: {format_instructions: formatInstructions},
+  });
+
+  const model = new OpenAI({ temperature: 0 });
+};
+
