@@ -4,7 +4,7 @@ config();
 
 import {OpenAI} from "langchain/llms/openai";
 import {ChatOpenAI} from "langchain/chat_models/openai";
-import {HumanMessage} from "langchain/schema";
+import {HumanMessage, LLMResult} from "langchain/schema";
 import {
   ChatPromptTemplate,
   ConditionalPromptSelector,
@@ -16,10 +16,15 @@ import {
   BaseOutputParser,
   FormatInstructionsOptions,
 } from "langchain/schema/output_parser";
+import {Serialized} from "langchain/dist/load/serializable";
 
 const llm = new OpenAI({
   openAIApiKey: process.env.OPENAI_API_KEY,
   temperature: 0.9,
+  maxRetries: 10,
+  maxConcurrency: 5,
+  cache: true,
+  maxTokens: 25,
 });
 
 const chatModel = new ChatOpenAI();
@@ -195,8 +200,63 @@ const partial3 = async () => {
 };
 
 const prediction7 = async () => {
-  const prompt = new PromptTemplate({
-    template: "Tell me a {adjective} joke about the day {date}",
-    inputVariables: ["adjective", "date"],
-  });
+  const model = new OpenAI({temperature: 1});
+  const controller = new AbortController();
+
+  // Call `controller.abort()` somewhere to cancel the request.
+
+  const res = await model.call(
+    "What would be a good company name a company that makes colorful socks?",
+    {signal: controller.signal}
+  );
+
+  console.log(res);
 };
+
+const prediction8 = async () => {
+  const model = new OpenAI({
+    openAIApiKey: process.env.OPENAI_API_KEY,
+    temperature: 0.9,
+    maxRetries: 10,
+    maxConcurrency: 5,
+    cache: true,
+    maxTokens: 25,
+    streaming: true,
+  });
+
+  const response = await model.call("Tell me a joke.", {
+    callbacks: [
+      {
+        handleLLMNewToken(token: string) {
+          console.log({token});
+        },
+      },
+    ],
+  });
+  console.log(response);
+};
+
+const prediction9 = async () => {
+  const model = new OpenAI({
+    callbacks: [
+      {
+        handleLLMStart: async (llm: Serialized, prompts: string[]) => {
+          console.log(JSON.stringify(llm, null, 2));
+          console.log(JSON.stringify(prompts, null, 2));
+        },
+        handleLLMEnd: async (output: LLMResult) => {
+          console.log(JSON.stringify(output, null, 2));
+        },
+        handleLLMError: async (err: Error) => {
+          console.error(err);
+        },
+      },
+    ],
+  });
+
+  await model.call(
+    "What would be a good company name a company that makes colorful socks?"
+  );
+};
+
+prediction9()
