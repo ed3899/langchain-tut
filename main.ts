@@ -7,6 +7,7 @@ import {ChatOpenAI} from "langchain/chat_models/openai";
 import {HumanMessage} from "langchain/schema";
 import {
   ChatPromptTemplate,
+  ConditionalPromptSelector,
   HumanMessagePromptTemplate,
   PromptTemplate,
   SystemMessagePromptTemplate,
@@ -145,5 +146,57 @@ const partial1 = async () => {
   const prompt = new PromptTemplate({
     template: "{foo}{bar}",
     inputVariables: ["foo", "bar"],
+  });
+
+  const partialPrompt = await prompt.partial({
+    foo: "foo",
+  });
+
+  const formattedPrompt = await partialPrompt.format({
+    bar: "baz",
+  });
+
+  console.log(formattedPrompt);
+};
+
+const partial2 = async () => {
+  const prompt = new PromptTemplate({
+    template: "{foo}{bar}",
+    inputVariables: ["bar"],
+    partialVariables: {
+      foo: "foo",
+    },
+  });
+
+  const formattedPrompt = await prompt.format({
+    bar: "baz",
+  });
+
+  console.log(formattedPrompt);
+};
+
+const partial3 = async () => {
+  const getCurrentDate = () => {
+    return new Date().toISOString();
+  };
+
+  const prompt = new PromptTemplate({
+    template: "Tell me a {adjective} joke about the day {date}",
+    inputVariables: ["adjective", "date"],
+  });
+
+  const partialPrompt = await prompt.partial({
+    date: getCurrentDate,
+  });
+
+  const formattedPrompt = await partialPrompt.format({
+    adjective: "funny",
+  });
+};
+
+const prediction7 = async () => {
+  const prompt = new PromptTemplate({
+    template: "Tell me a {adjective} joke about the day {date}",
+    inputVariables: ["adjective", "date"],
   });
 };
