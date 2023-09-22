@@ -19,6 +19,7 @@ import {
   FormatInstructionsOptions,
 } from "langchain/schema/output_parser";
 import {Serialized} from "langchain/dist/load/serializable";
+import {CheerioWebBaseLoader} from "langchain/document_loaders/web/cheerio";
 
 const llm = new OpenAI({
   openAIApiKey: process.env.OPENAI_API_KEY,
@@ -285,3 +286,13 @@ const model = new OpenAI({temperature: 0});
 const prompt = PromptTemplate.fromTemplate(
   "What is a good name for a company that makes {product}?"
 );
+
+const cheerioTest = async () => {
+  const loader = new CheerioWebBaseLoader(
+    "https://news.ycombinator.com/news"
+  );
+
+  const docs = await loader.load();
+
+  console.log(docs);
+};

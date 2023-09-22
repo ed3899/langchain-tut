@@ -17,7 +17,9 @@
     "typescript": "^5.2.2"
   },
   "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
     "dotenv": "^16.3.1",
-    "langchain": "^0.0.153"
+    "langchain": "^0.0.153",
+    "puppeteer": "^19.11.1"
   }
 }
