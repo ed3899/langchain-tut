@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    restart: always
+    environment:
+      PMA_HOST: 164.92.96.29
+      MYSQL_USER: aplicacion
+      MYSQL_PASSWORD: 4pl1c4c10N01!
+      PMA_PORTS: "3306"
+    ports:
+      - "8080:3306"

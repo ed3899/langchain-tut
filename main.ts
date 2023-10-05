@@ -2,6 +2,11 @@ import {config} from "dotenv";
 
 config();
 
+import {
+  Browser,
+  Page,
+  PuppeteerWebBaseLoader,
+} from "langchain/document_loaders/web/puppeteer";
 import {LLMChain} from "langchain/chains";
 import {OpenAI} from "langchain/llms/openai";
 import {ChatOpenAI} from "langchain/chat_models/openai";
@@ -20,6 +25,10 @@ import {
 } from "langchain/schema/output_parser";
 import {Serialized} from "langchain/dist/load/serializable";
 import {CheerioWebBaseLoader} from "langchain/document_loaders/web/cheerio";
+import {compile} from "html-to-text";
+import {RecursiveUrlLoader} from "langchain/document_loaders/web/recursive_url";
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import {HtmlToTextTransformer} from "langchain/document_transformers/html_to_text";
 
 const llm = new OpenAI({
   openAIApiKey: process.env.OPENAI_API_KEY,
@@ -288,11 +297,56 @@ const prompt = PromptTemplate.fromTemplate(
 );
 
 const cheerioTest = async () => {
-  const loader = new CheerioWebBaseLoader(
-    "https://news.ycombinator.com/news"
-  );
-
+  const loader = new CheerioWebBaseLoader("https://news.ycombinator.com/news");
   const docs = await loader.load();
 
   console.log(docs);
 };
+
+const puppeteer = async () => {
+  /**
+   * Loader uses `page.evaluate(() => document.body.innerHTML)`
+   * as default evaluate function
+   **/
+  const loader = new PuppeteerWebBaseLoader(
+    "https://news.ycombinator.com/news",
+    {
+      gotoOptions: {
+        waitUntil: "domcontentloaded",
+      },
+      /** Pass custom evaluate, in this case you get page and browser instances */
+      async evaluate(page: Page, browser: Browser) {
+        await page.waitForResponse("https://news.ycombinator.com/jobs");
+
+        const result = await page.evaluate(() => document.body.innerHTML);
+        return result;
+      },
+    }
+  );
+  const docs = await loader.load();
+
+  console.log(docs);
+};
+
+const recursiveUrlLoader = async () => {
+  const loader = new RecursiveUrlLoader(
+    "https://js.langchain.com/docs/get_started/introduction",
+    {
+      extractor: compile({wordwrap: 130}),
+      maxDepth: 2,
+      excludeDirs: ["https://js.langchain.com/docs/api/"],
+    }
+  );
+  const docs = await loader.load();
+
+  const splitter = RecursiveCharacterTextSplitter.fromLanguage("html");
+  const transformer = new HtmlToTextTransformer();
+
+  const sequence = splitter.pipe(transformer);
+
+  const newDocuments = await sequence.invoke(docs);
+
+  console.log(newDocuments);
+};
+
+recursiveUrlLoader();
