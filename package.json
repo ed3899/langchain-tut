@@ -13,6 +13,7 @@
   "devDependencies": {
     "@types/html-to-text": "^9.0.2",
     "@types/node": "^20.6.3",
+    "@types/ramda": "^0.29.6",
     "ts-node": "^10.9.1",
     "tslib": "^2.6.2",
     "typescript": "^5.2.2"
@@ -20,9 +21,12 @@
   "dependencies": {
     "cheerio": "^1.0.0-rc.12",
     "dotenv": "^16.3.1",
+    "hnswlib-node": "^1.4.2",
     "html-to-text": "^9.0.5",
     "jsdom": "^22.1.0",
     "langchain": "^0.0.153",
-    "puppeteer": "^19.11.1"
+    "pdf-parse": "^1.1.1",
+    "puppeteer": "^19.11.1",
+    "ramda": "^0.29.1"
   }
 }

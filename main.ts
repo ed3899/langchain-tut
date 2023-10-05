@@ -27,309 +27,318 @@ import {Serialized} from "langchain/dist/load/serializable";
 import {CheerioWebBaseLoader} from "langchain/document_loaders/web/cheerio";
 import {compile} from "html-to-text";
 import {RecursiveUrlLoader} from "langchain/document_loaders/web/recursive_url";
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import {RecursiveCharacterTextSplitter} from "langchain/text_splitter";
 import {HtmlToTextTransformer} from "langchain/document_transformers/html_to_text";
+import {PDFLoader} from "langchain/document_loaders/fs/pdf";
+import * as R from "ramda";
+import {HNSWLib} from "langchain/vectorstores/hnswlib";
+import {OpenAIEmbeddings} from "langchain/embeddings/openai";
 
-const llm = new OpenAI({
-  openAIApiKey: process.env.OPENAI_API_KEY,
-  temperature: 0.9,
-  maxRetries: 10,
-  maxConcurrency: 5,
-  cache: true,
-  maxTokens: 25,
-});
+// const llm = new OpenAI({
+//   openAIApiKey: process.env.OPENAI_API_KEY,
+//   temperature: 0.9,
+//   maxRetries: 10,
+//   maxConcurrency: 5,
+//   cache: true,
+//   maxTokens: 25,
+//   modelName: 'ada-code-search-code'
+// });
 
-const chatModel = new ChatOpenAI();
+// const chatModel = new ChatOpenAI();
 
-const text =
-  "What would be a good company name for a company that makes colorful socks?";
+// const text =
+//   "What would be a good company name for a company that makes colorful socks?";
 
-const prediction1 = async () => {
-  const llmResult = await llm.predict(text);
-  const chatModelResult = await chatModel.predict(text);
+// const prediction1 = async () => {
+//   const llmResult = await llm.predict(text);
+//   const chatModelResult = await chatModel.predict(text);
 
-  console.log("Prediction 1");
-  console.log(llmResult);
-  console.log(chatModelResult);
-};
+//   console.log("Prediction 1");
+//   console.log(llmResult);
+//   console.log(chatModelResult);
+// };
 
-const prediction2 = async () => {
-  const messages = [new HumanMessage({content: text})];
+// const prediction2 = async () => {
+//   const messages = [new HumanMessage({content: text})];
 
-  const llmResult = await llm.predictMessages(messages);
-  const chatModelResult = await chatModel.predictMessages(messages);
+//   const llmResult = await llm.predictMessages(messages);
+//   const chatModelResult = await chatModel.predictMessages(messages);
 
-  console.log("Prediction 2");
-  console.log(llmResult);
-  console.log(chatModelResult);
-};
+//   console.log("Prediction 2");
+//   console.log(llmResult);
+//   console.log(chatModelResult);
+// };
 
-const prediction3 = async () => {
-  const prompt = PromptTemplate.fromTemplate(
-    "What is a good name for a company that makes {product}?"
-  );
+// const prediction3 = async () => {
+//   const prompt = PromptTemplate.fromTemplate(
+//     "What is a good name for a company that makes {product}?"
+//   );
 
-  const formattedPrompt = await prompt.format({
-    product: "colorful socks",
-  });
+//   const formattedPrompt = await prompt.format({
+//     product: "colorful socks",
+//   });
 
-  console.log("Prediction 3");
-  console.log(formattedPrompt);
-};
+//   console.log("Prediction 3");
+//   console.log(formattedPrompt);
+// };
 
-const prediction4 = async () => {
-  const template =
-    "You are a helpful assistant that translates {input_language} to {output_language}.";
-  const humanTemplate = "{text}";
+// const prediction4 = async () => {
+//   const template =
+//     "You are a helpful assistant that translates {input_language} to {output_language}.";
+//   const humanTemplate = "{text}";
 
-  const chatPrompt = ChatPromptTemplate.fromMessages([
-    ["system", template],
-    ["human", humanTemplate],
-  ]);
+//   const chatPrompt = ChatPromptTemplate.fromMessages([
+//     ["system", template],
+//     ["human", humanTemplate],
+//   ]);
 
-  const formattedChatPrompt = await chatPrompt.formatMessages({
-    input_language: "English",
-    output_language: "French",
-    text: "I love programming.",
-  });
+//   const formattedChatPrompt = await chatPrompt.formatMessages({
+//     input_language: "English",
+//     output_language: "French",
+//     text: "I love programming.",
+//   });
 
-  const llmResult = await llm.predictMessages(formattedChatPrompt);
+//   const llmResult = await llm.predictMessages(formattedChatPrompt);
 
-  console.log(llmResult);
-};
+//   console.log(llmResult);
+// };
 
-const prediction5 = async () => {
-  /**
-   * Parse the output of an LLM call to a comma-separated list.
-   */
-  class CommaSeparatedListOutputParser extends BaseOutputParser<string[]> {
-    getFormatInstructions(
-      options?: FormatInstructionsOptions | undefined
-    ): string {
-      throw new Error("Method not implemented.");
-    }
-    lc_namespace: string[] = [];
-    async parse(text: string): Promise<string[]> {
-      return text.split(",").map(item => item.trim());
-    }
-  }
+// const prediction5 = async () => {
+//   /**
+//    * Parse the output of an LLM call to a comma-separated list.
+//    */
+//   class CommaSeparatedListOutputParser extends BaseOutputParser<string[]> {
+//     getFormatInstructions(
+//       options?: FormatInstructionsOptions | undefined
+//     ): string {
+//       throw new Error("Method not implemented.");
+//     }
+//     lc_namespace: string[] = [];
+//     async parse(text: string): Promise<string[]> {
+//       return text.split(",").map(item => item.trim());
+//     }
+//   }
 
-  const template = `You are a helpful assistant who generates comma separated lists.
-A user will pass in a category, and you should generate 5 objects in that category in a comma separated list.
-ONLY return a comma separated list, and nothing more.`;
+//   const template = `You are a helpful assistant who generates comma separated lists.
+// A user will pass in a category, and you should generate 5 objects in that category in a comma separated list.
+// ONLY return a comma separated list, and nothing more.`;
 
-  const humanTemplate = "{text}";
+//   const humanTemplate = "{text}";
 
-  /**
-   * Chat prompt for generating comma-separated lists. It combines the system
-   * template and the human template.
-   */
-  const chatPrompt = ChatPromptTemplate.fromMessages([
-    ["system", template],
-    ["human", humanTemplate],
-  ]);
+//   /**
+//    * Chat prompt for generating comma-separated lists. It combines the system
+//    * template and the human template.
+//    */
+//   const chatPrompt = ChatPromptTemplate.fromMessages([
+//     ["system", template],
+//     ["human", humanTemplate],
+//   ]);
 
-  const model = new ChatOpenAI({});
-  const parser = new CommaSeparatedListOutputParser();
+//   const model = new ChatOpenAI({});
+//   const parser = new CommaSeparatedListOutputParser();
 
-  const chain = chatPrompt.pipe(model).pipe(parser);
+//   const chain = chatPrompt.pipe(model).pipe(parser);
 
-  const result = await chain.invoke({
-    text: "colors",
-  });
+//   const result = await chain.invoke({
+//     text: "colors",
+//   });
 
-  console.log(result);
-};
+//   console.log(result);
+// };
 
-const prediction6 = async () => {
-  const template =
-    "You are a helpful assistant that translates {input_language} to {output_language}.";
-  const systemMessagePrompt =
-    SystemMessagePromptTemplate.fromTemplate(template);
-  const humanTemplate = "{text}";
-  const humanMessagePrompt =
-    HumanMessagePromptTemplate.fromTemplate(humanTemplate);
+// const prediction6 = async () => {
+//   const template =
+//     "You are a helpful assistant that translates {input_language} to {output_language}.";
+//   const systemMessagePrompt =
+//     SystemMessagePromptTemplate.fromTemplate(template);
+//   const humanTemplate = "{text}";
+//   const humanMessagePrompt =
+//     HumanMessagePromptTemplate.fromTemplate(humanTemplate);
 
-  const chatPrompt = ChatPromptTemplate.fromMessages<{
-    input_language: string;
-    output_language: string;
-    text: string;
-  }>([systemMessagePrompt, humanMessagePrompt]);
+//   const chatPrompt = ChatPromptTemplate.fromMessages<{
+//     input_language: string;
+//     output_language: string;
+//     text: string;
+//   }>([systemMessagePrompt, humanMessagePrompt]);
 
-  console.log(chatPrompt);
-};
+//   console.log(chatPrompt);
+// };
 
-const partial1 = async () => {
-  const prompt = new PromptTemplate({
-    template: "{foo}{bar}",
-    inputVariables: ["foo", "bar"],
-  });
+// const partial1 = async () => {
+//   const prompt = new PromptTemplate({
+//     template: "{foo}{bar}",
+//     inputVariables: ["foo", "bar"],
+//   });
 
-  const partialPrompt = await prompt.partial({
-    foo: "foo",
-  });
+//   const partialPrompt = await prompt.partial({
+//     foo: "foo",
+//   });
 
-  const formattedPrompt = await partialPrompt.format({
-    bar: "baz",
-  });
+//   const formattedPrompt = await partialPrompt.format({
+//     bar: "baz",
+//   });
 
-  console.log(formattedPrompt);
-};
+//   console.log(formattedPrompt);
+// };
 
-const partial2 = async () => {
-  const prompt = new PromptTemplate({
-    template: "{foo}{bar}",
-    inputVariables: ["bar"],
-    partialVariables: {
-      foo: "foo",
-    },
-  });
+// const partial2 = async () => {
+//   const prompt = new PromptTemplate({
+//     template: "{foo}{bar}",
+//     inputVariables: ["bar"],
+//     partialVariables: {
+//       foo: "foo",
+//     },
+//   });
 
-  const formattedPrompt = await prompt.format({
-    bar: "baz",
-  });
+//   const formattedPrompt = await prompt.format({
+//     bar: "baz",
+//   });
 
-  console.log(formattedPrompt);
-};
+//   console.log(formattedPrompt);
+// };
 
-const partial3 = async () => {
-  const getCurrentDate = () => {
-    return new Date().toISOString();
-  };
+// const partial3 = async () => {
+//   const getCurrentDate = () => {
+//     return new Date().toISOString();
+//   };
 
-  const prompt = new PromptTemplate({
-    template: "Tell me a {adjective} joke about the day {date}",
-    inputVariables: ["adjective", "date"],
-  });
+//   const prompt = new PromptTemplate({
+//     template: "Tell me a {adjective} joke about the day {date}",
+//     inputVariables: ["adjective", "date"],
+//   });
 
-  const partialPrompt = await prompt.partial({
-    date: getCurrentDate,
-  });
+//   const partialPrompt = await prompt.partial({
+//     date: getCurrentDate,
+//   });
 
-  const formattedPrompt = await partialPrompt.format({
-    adjective: "funny",
-  });
-};
+//   const formattedPrompt = await partialPrompt.format({
+//     adjective: "funny",
+//   });
+// };
 
-const prediction7 = async () => {
-  const model = new OpenAI({temperature: 1});
-  const controller = new AbortController();
+// const prediction7 = async () => {
+//   const model = new OpenAI({temperature: 1});
+//   const controller = new AbortController();
 
-  // Call `controller.abort()` somewhere to cancel the request.
+//   // Call `controller.abort()` somewhere to cancel the request.
 
-  const res = await model.call(
-    "What would be a good company name a company that makes colorful socks?",
-    {signal: controller.signal}
-  );
+//   const res = await model.call(
+//     "What would be a good company name a company that makes colorful socks?",
+//     {signal: controller.signal}
+//   );
 
-  console.log(res);
-};
+//   console.log(res);
+// };
 
-const prediction8 = async () => {
-  const model = new OpenAI({
-    openAIApiKey: process.env.OPENAI_API_KEY,
-    temperature: 0.9,
-    maxRetries: 10,
-    maxConcurrency: 5,
-    cache: true,
-    maxTokens: 25,
-    streaming: true,
-  });
+// const prediction8 = async () => {
+//   const model = new OpenAI({
+//     openAIApiKey: process.env.OPENAI_API_KEY,
+//     temperature: 0.9,
+//     maxRetries: 10,
+//     maxConcurrency: 5,
+//     cache: true,
+//     maxTokens: 25,
+//     streaming: true,
+//   });
 
-  const response = await model.call("Tell me a joke.", {
-    callbacks: [
-      {
-        handleLLMNewToken(token: string) {
-          console.log({token});
-        },
-      },
-    ],
-  });
-  console.log(response);
-};
+//   const response = await model.call("Tell me a joke.", {
+//     callbacks: [
+//       {
+//         handleLLMNewToken(token: string) {
+//           console.log({token});
+//         },
+//       },
+//     ],
+//   });
+//   console.log(response);
+// };
 
-const prediction9 = async () => {
-  const model = new OpenAI({
-    callbacks: [
-      {
-        handleLLMStart: async (llm: Serialized, prompts: string[]) => {
-          console.log(JSON.stringify(llm, null, 2));
-          console.log(JSON.stringify(prompts, null, 2));
-        },
-        handleLLMEnd: async (output: LLMResult) => {
-          console.log(JSON.stringify(output, null, 2));
-        },
-        handleLLMError: async (err: Error) => {
-          console.error(err);
-        },
-      },
-    ],
-  });
+// const prediction9 = async () => {
+//   const model = new OpenAI({
+//     callbacks: [
+//       {
+//         handleLLMStart: async (llm: Serialized, prompts: string[]) => {
+//           console.log(JSON.stringify(llm, null, 2));
+//           console.log(JSON.stringify(prompts, null, 2));
+//         },
+//         handleLLMEnd: async (output: LLMResult) => {
+//           console.log(JSON.stringify(output, null, 2));
+//         },
+//         handleLLMError: async (err: Error) => {
+//           console.error(err);
+//         },
+//       },
+//     ],
+//   });
 
-  await model.call(
-    "What would be a good company name a company that makes colorful socks?"
-  );
-};
+//   await model.call(
+//     "What would be a good company name a company that makes colorful socks?"
+//   );
+// };
 
-const prediction10 = async () => {
-  // With a `StructuredOutputParser` we can define a schema for the output.
-  const parser = StructuredOutputParser.fromNamesAndDescriptions({
-    answer: "answer to the user's question",
-    source: "source used to answer the user's question, should be a website.",
-  });
+// const prediction10 = async () => {
+//   // With a `StructuredOutputParser` we can define a schema for the output.
+//   const parser = StructuredOutputParser.fromNamesAndDescriptions({
+//     answer: "answer to the user's question",
+//     source: "source used to answer the user's question, should be a website.",
+//   });
 
-  const formatInstructions = parser.getFormatInstructions();
+//   const formatInstructions = parser.getFormatInstructions();
 
-  const prompt = new PromptTemplate({
-    template:
-      "Answer the users question as best as possible.\n{format_instructions}\n{question}",
-    inputVariables: ["question"],
-    partialVariables: {format_instructions: formatInstructions},
-  });
+//   const prompt = new PromptTemplate({
+//     template:
+//       "Answer the users question as best as possible.\n{format_instructions}\n{question}",
+//     inputVariables: ["question"],
+//     partialVariables: {format_instructions: formatInstructions},
+//   });
 
-  const model = new OpenAI({temperature: 0});
-};
+//   const model = new OpenAI({temperature: 0});
+// };
 
-// We can construct an LLMChain from a PromptTemplate and an LLM.
-const model = new OpenAI({temperature: 0});
-const prompt = PromptTemplate.fromTemplate(
-  "What is a good name for a company that makes {product}?"
-);
+// // We can construct an LLMChain from a PromptTemplate and an LLM.
+// const model = new OpenAI({temperature: 0});
+// const prompt = PromptTemplate.fromTemplate(
+//   "What is a good name for a company that makes {product}?"
+// );
 
-const cheerioTest = async () => {
-  const loader = new CheerioWebBaseLoader("https://news.ycombinator.com/news");
-  const docs = await loader.load();
+// const cheerioTest = async () => {
+//   const loader = new CheerioWebBaseLoader("https://news.ycombinator.com/news");
+//   const docs = await loader.load();
 
-  console.log(docs);
-};
+//   console.log(docs);
+// };
 
-const puppeteer = async () => {
-  /**
-   * Loader uses `page.evaluate(() => document.body.innerHTML)`
-   * as default evaluate function
-   **/
-  const loader = new PuppeteerWebBaseLoader(
-    "https://news.ycombinator.com/news",
-    {
-      gotoOptions: {
-        waitUntil: "domcontentloaded",
-      },
-      /** Pass custom evaluate, in this case you get page and browser instances */
-      async evaluate(page: Page, browser: Browser) {
-        await page.waitForResponse("https://news.ycombinator.com/jobs");
+// const puppeteer = async () => {
+//   /**
+//    * Loader uses `page.evaluate(() => document.body.innerHTML)`
+//    * as default evaluate function
+//    **/
+//   const loader = new PuppeteerWebBaseLoader(
+//     "https://news.ycombinator.com/news",
+//     {
+//       gotoOptions: {
+//         waitUntil: "domcontentloaded",
+//       },
+//       /** Pass custom evaluate, in this case you get page and browser instances */
+//       async evaluate(page: Page, browser: Browser) {
+//         await page.waitForResponse("https://news.ycombinator.com/jobs");
 
-        const result = await page.evaluate(() => document.body.innerHTML);
-        return result;
-      },
-    }
-  );
-  const docs = await loader.load();
+//         const result = await page.evaluate(() => document.body.innerHTML);
+//         return result;
+//       },
+//     }
+//   );
+//   const docs = await loader.load();
 
-  console.log(docs);
-};
+//   console.log(docs);
+// };
 
 const recursiveUrlLoader = async () => {
-  const loader = new RecursiveUrlLoader(
+  const htmlSplitter = RecursiveCharacterTextSplitter.fromLanguage("html");
+  const htmlTransformer = new HtmlToTextTransformer();
+  const urlSequence = htmlSplitter.pipe(htmlTransformer);
+
+  const urlLoader = new RecursiveUrlLoader(
     "https://js.langchain.com/docs/get_started/introduction",
     {
       extractor: compile({wordwrap: 130}),
@@ -337,16 +346,21 @@ const recursiveUrlLoader = async () => {
       excludeDirs: ["https://js.langchain.com/docs/api/"],
     }
   );
-  const docs = await loader.load();
+  const urlDocs = await urlLoader.load();
+  const pipedUrlDocs = await urlSequence.invoke(urlDocs);
 
-  const splitter = RecursiveCharacterTextSplitter.fromLanguage("html");
-  const transformer = new HtmlToTextTransformer();
+  const pdfLoader = new PDFLoader("./test-pdf.pdf");
+  const pdfDocs = await pdfLoader.load();
 
-  const sequence = splitter.pipe(transformer);
+  const mergedDocs = R.concat(pdfDocs, pipedUrlDocs);
 
-  const newDocuments = await sequence.invoke(docs);
+  const vectorStore = await HNSWLib.fromDocuments(mergedDocs, new OpenAIEmbeddings({
+    openAIApiKey: process.env.OPENAI_API_KEY,
+  }))
 
-  console.log(newDocuments);
+  const result = await vectorStore.similaritySearch("eduardo", 1);
+
+  console.log(result);
 };
 
 recursiveUrlLoader();
