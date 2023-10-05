@@ -33,6 +33,7 @@ import {PDFLoader} from "langchain/document_loaders/fs/pdf";
 import * as R from "ramda";
 import {HNSWLib} from "langchain/vectorstores/hnswlib";
 import {OpenAIEmbeddings} from "langchain/embeddings/openai";
+import * as path from "path";
 
 // const llm = new OpenAI({
 //   openAIApiKey: process.env.OPENAI_API_KEY,
@@ -346,25 +347,32 @@ const recursiveUrlLoader = async () => {
       excludeDirs: ["https://js.langchain.com/docs/api/"],
     }
   );
-  const urlDocs = await urlLoader.load();
-  const pipedUrlDocs = await urlSequence.invoke(urlDocs);
+  try {
+    const urlDocs = await urlLoader.load();
+    const pipedUrlDocs = await urlSequence.invoke(urlDocs);
 
-  const pdfLoader = new PDFLoader("./test-pdf.pdf");
-  const pdfDocs = await pdfLoader.load();
+    const pdfLoader = new PDFLoader("./test-pdf.pdf");
+    const pdfDocs = await pdfLoader.load();
 
-  const mergedDocs = R.concat(pdfDocs, pipedUrlDocs);
+    const mergedDocs = R.concat(pdfDocs, pipedUrlDocs);
 
-  const vectorStore = await HNSWLib.fromDocuments(
-    mergedDocs,
-    new OpenAIEmbeddings({
+    const embeddingsModel = new OpenAIEmbeddings({
       openAIApiKey: process.env.OPENAI_API_KEY,
       modelName: "text-embedding-ada-002",
-    })
-  );
+    });
+    const vectorStore = await HNSWLib.fromDocuments(
+      mergedDocs,
+      embeddingsModel
+    );
+    const dir = "vector-store";
+    await vectorStore.save(path.join(process.cwd(), dir));
 
-  const result = await vectorStore.similaritySearch("eduardo", 1);
-
-  console.log(result);
+    const loadedVectorStore = await HNSWLib.load(dir, embeddingsModel);
+    const result = await loadedVectorStore.similaritySearch("langchain", 1);
+    console.log(result);
+  } catch (error) {
+    console.error(error);
+  }
 };
 
 recursiveUrlLoader();
