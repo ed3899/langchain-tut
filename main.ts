@@ -354,9 +354,13 @@ const recursiveUrlLoader = async () => {
 
   const mergedDocs = R.concat(pdfDocs, pipedUrlDocs);
 
-  const vectorStore = await HNSWLib.fromDocuments(mergedDocs, new OpenAIEmbeddings({
-    openAIApiKey: process.env.OPENAI_API_KEY,
-  }))
+  const vectorStore = await HNSWLib.fromDocuments(
+    mergedDocs,
+    new OpenAIEmbeddings({
+      openAIApiKey: process.env.OPENAI_API_KEY,
+      modelName: "text-embedding-ada-002",
+    })
+  );
 
   const result = await vectorStore.similaritySearch("eduardo", 1);
 
