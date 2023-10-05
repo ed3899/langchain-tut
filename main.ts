@@ -368,8 +368,13 @@ const recursiveUrlLoader = async () => {
     await vectorStore.save(path.join(process.cwd(), dir));
 
     const loadedVectorStore = await HNSWLib.load(dir, embeddingsModel);
-    const result = await loadedVectorStore.similaritySearch("langchain", 1);
-    console.log(result);
+    // TODO need filter out when there are no results regarding one query
+    const result = await loadedVectorStore.similaritySearch("langchain");
+
+    const retriever = await loadedVectorStore.asRetriever();
+
+    const res = await retriever.getRelevantDocuments("Please only return documents relevant to Langchain");
+    console.log(res);
   } catch (error) {
     console.error(error);
   }
