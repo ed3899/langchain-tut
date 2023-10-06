@@ -15,6 +15,7 @@ import {StructuredOutputParser} from "langchain/output_parsers";
 import {
   ChatPromptTemplate,
   ConditionalPromptSelector,
+  FewShotPromptTemplate,
   HumanMessagePromptTemplate,
   PromptTemplate,
   SystemMessagePromptTemplate,
@@ -34,6 +35,8 @@ import * as R from "ramda";
 import {HNSWLib} from "langchain/vectorstores/hnswlib";
 import {OpenAIEmbeddings} from "langchain/embeddings/openai";
 import * as path from "path";
+import {ConversationalRetrievalQAChain} from "langchain/chains";
+import {BufferMemory} from "langchain/memory";
 
 // const llm = new OpenAI({
 //   openAIApiKey: process.env.OPENAI_API_KEY,
@@ -351,6 +354,7 @@ const recursiveUrlLoader = async () => {
     const urlDocs = await urlLoader.load();
     const pipedUrlDocs = await urlSequence.invoke(urlDocs);
 
+    // TODO What if the pdf is not a valid one?
     const pdfLoader = new PDFLoader("./test-pdf.pdf");
     const pdfDocs = await pdfLoader.load();
 
@@ -369,11 +373,38 @@ const recursiveUrlLoader = async () => {
 
     const loadedVectorStore = await HNSWLib.load(dir, embeddingsModel);
     // TODO need filter out when there are no results regarding one query
-    const result = await loadedVectorStore.similaritySearch("langchain");
+    // const result = await loadedVectorStore.similaritySearch("langchain");
+    const retriever = loadedVectorStore.asRetriever();
 
-    const retriever = await loadedVectorStore.asRetriever();
+    const llm = new ChatOpenAI({
+      openAIApiKey: process.env.OPENAI_API_KEY,
+      temperature: 0.3,
+      maxRetries: 10,
+      maxConcurrency: 5,
+      n: 1,
+    });
 
-    const res = await retriever.getRelevantDocuments("Please only return documents relevant to Langchain");
+    const prompt = new PromptTemplate({
+      inputVariables: ["question"],
+      template:
+        "Given the question {question}, answer in a short sentence.",
+    });
+
+    const chain = ConversationalRetrievalQAChain.fromLLM(llm, retriever, {
+      memory: new BufferMemory({
+        memoryKey: "chat_history", // Must be set to "chat_history"
+        inputKey: "question",
+        outputKey: "text",
+      }),
+      questionGeneratorChainOptions: {
+        template: "Given the question {question}, answer in a short sentence.",
+      }
+    });
+
+    const res = await chain.call({
+      question: "What is langchain?",
+    });
+
     console.log(res);
   } catch (error) {
     console.error(error);
