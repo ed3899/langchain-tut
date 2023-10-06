@@ -346,8 +346,9 @@ const recursiveUrlLoader = async () => {
     "https://js.langchain.com/docs/get_started/introduction",
     {
       extractor: compile({wordwrap: 130}),
-      maxDepth: 2,
+      maxDepth: 3,
       excludeDirs: ["https://js.langchain.com/docs/api/"],
+      preventOutside: true,
     }
   );
   try {
@@ -402,7 +403,7 @@ const recursiveUrlLoader = async () => {
     });
 
     const res = await chain.call({
-      question: "Eli5 langchain",
+      question: "What is langchain?",
     });
 
     console.log(res);
