@@ -397,12 +397,12 @@ const recursiveUrlLoader = async () => {
         outputKey: "text",
       }),
       questionGeneratorChainOptions: {
-        template: "Given the question {question}, answer in a short sentence.",
+        template: "Given the question {question}, answer in a short sentence. In case you don't have enough information just answer 'I don't have access to that information, sorry.'",
       }
     });
 
     const res = await chain.call({
-      question: "What is langchain?",
+      question: "Eli5 langchain",
     });
 
     console.log(res);
