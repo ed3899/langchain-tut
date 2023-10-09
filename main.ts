@@ -343,8 +343,9 @@ const recursiveUrlLoader = async () => {
     new HtmlToTextTransformer()
   );
 
+  // Extract information from url
   const urlLoader = new RecursiveUrlLoader(
-    "https://js.langchain.com/docs/get_started/introduction",
+    "https://js.l/docs/get_started/introduction",
     {
       extractor: compile({wordwrap: 130}),
       maxDepth: 2,
@@ -353,6 +354,7 @@ const recursiveUrlLoader = async () => {
     }
   );
   try {
+    // Parse html to text
     const urlDocs = R.pipe(
       async () => await urlLoader.load(),
       async _urlDocs => {
@@ -360,16 +362,11 @@ const recursiveUrlLoader = async () => {
       }
     );
 
+    // Extract information from pdf
     const pdfDocs = R.pipe(
       pdfPath => new PDFLoader(pdfPath),
       async pdfLoader => await pdfLoader.load()
     );
-
-    // const urlDocs = await urlLoader.load();
-    // const pipedUrlDocs = await urlSequence.invoke(urlDocs);
-
-    // const pdfLoader = new PDFLoader("./test-pdf.pdf");
-    // const pdfDocs = await pdfLoader.load();
 
     const saveVector = R.pipe(
       async (pathToSave: string) => {
@@ -413,29 +410,9 @@ const recursiveUrlLoader = async () => {
       }
     );
 
-    // const mergedDocs = R.concat(
-    //   await pdfDocs("./test-pdf.pdf"),
-    //   await urlDocs()
-    // );
-
-    // const embeddingsModel = new OpenAIEmbeddings({
-    //   openAIApiKey: process.env.OPENAI_API_KEY,
-    //   modelName: "text-embedding-ada-002",
-    // });
-    // const vectorStore = await HNSWLib.fromDocuments(
-    //   mergedDocs,
-    //   embeddingsModel
-    // );
     const dir = "vector-store";
-    // await vectorStore.save(path.join(process.cwd(), dir));
+
     await saveVector(path.join(process.cwd(), dir));
-
-    // const loadedVectorStore = await HNSWLib.load(dir, embeddingsModel);
-    // const retriever = loadedVectorStore.asRetriever();
-
-    // const res = await retriever.getRelevantDocuments("Langchain");
-
-    // console.log(res);
   } catch (error) {
     console.error(error);
   }
