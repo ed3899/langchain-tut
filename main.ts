@@ -16,42 +16,45 @@ import {ConversationalRetrievalQAChain} from "langchain/chains";
 import {BufferMemory} from "langchain/memory";
 
 const recursiveUrlLoader = async () => {
-  /**
-   * The transformer responsible for transforming the html
-   */
-  const urlTransformer = RecursiveCharacterTextSplitter.fromLanguage(
-    "html"
-  ).pipe(new HtmlToTextTransformer());
-
-  /**
-   * The loader responsible for loading the html files recursively
-   * from the url
-   */
-  const urlLoader = new RecursiveUrlLoader(
-    "https://js.langchain.com//docs/get_started/introduction",
-    {
-      extractor: compile({wordwrap: 130}),
-      maxDepth: 2,
-      excludeDirs: ["https://js.langchain.com/docs/api/"],
-      preventOutside: true,
-    }
-  );
-
   try {
-    // Parse html to text
+    /**
+     * Parses the html files recursively from the url and transforms them
+     */
     const urlDocs = R.pipe(
-      async () => await urlLoader.load(),
+      /**
+       * Load the html files recursively from the url
+       */
+      async () =>
+        await new RecursiveUrlLoader(
+          "https://js.langchain.com//docs/get_started/introduction",
+          {
+            extractor: compile({wordwrap: 130}),
+            maxDepth: 2,
+            excludeDirs: ["https://js.langchain.com/docs/api/"],
+            preventOutside: true,
+          }
+        ).load(),
+      /**
+       * Tranform the html files recursively from the url to text
+       */
       async _urlDocs => {
-        return await urlTransformer.invoke(await _urlDocs);
+        return await RecursiveCharacterTextSplitter.fromLanguage("html")
+          .pipe(new HtmlToTextTransformer())
+          .invoke(await _urlDocs);
       }
     );
 
-    // Extract information from pdf
-    const pdfDocs = R.pipe(
-      (pdfPath: string) => new PDFLoader(pdfPath),
-      async pdfLoader => await pdfLoader.load()
-    );
+    /**
+     * Loads the pdf docs
+     * @param pathToPdf
+     * @returns
+     */
+    const pdfDocs = async (pathToPdf: string) =>
+      await new PDFLoader(pathToPdf).load();
 
+    /**
+     * Saves the vector store to a file
+     */
     const saveVectorStore = R.pipe(
       async (pathToSave: string) => {
         const mergedDocs = R.concat(
