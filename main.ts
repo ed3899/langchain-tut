@@ -37,6 +37,7 @@ import {OpenAIEmbeddings} from "langchain/embeddings/openai";
 import * as path from "path";
 import {ConversationalRetrievalQAChain} from "langchain/chains";
 import {BufferMemory} from "langchain/memory";
+import {Document} from "langchain/document";
 
 // const llm = new OpenAI({
 //   openAIApiKey: process.env.OPENAI_API_KEY,
@@ -338,28 +339,79 @@ import {BufferMemory} from "langchain/memory";
 // };
 
 const recursiveUrlLoader = async () => {
-  const htmlSplitter = RecursiveCharacterTextSplitter.fromLanguage("html");
-  const htmlTransformer = new HtmlToTextTransformer();
-  const urlSequence = htmlSplitter.pipe(htmlTransformer);
+  const urlSequence = RecursiveCharacterTextSplitter.fromLanguage("html").pipe(
+    new HtmlToTextTransformer()
+  );
 
   const urlLoader = new RecursiveUrlLoader(
     "https://js.langchain.com/docs/get_started/introduction",
     {
       extractor: compile({wordwrap: 130}),
-      maxDepth: 3,
+      maxDepth: 2,
       excludeDirs: ["https://js.langchain.com/docs/api/"],
       preventOutside: true,
     }
   );
   try {
-    const urlDocs = await urlLoader.load();
-    const pipedUrlDocs = await urlSequence.invoke(urlDocs);
+    const urlDocs = R.pipe(
+      async () => await urlLoader.load(),
+      async _urlDocs => {
+        return await urlSequence.invoke(await _urlDocs);
+      }
+    );
 
-    // TODO What if the pdf is not a valid one?
-    const pdfLoader = new PDFLoader("./test-pdf.pdf");
-    const pdfDocs = await pdfLoader.load();
+    const pdfDocs = R.pipe(
+      pdfPath => new PDFLoader(pdfPath),
+      async pdfLoader => await pdfLoader.load()
+    );
 
-    const mergedDocs = R.concat(pdfDocs, pipedUrlDocs);
+    // const urlDocs = await urlLoader.load();
+    // const pipedUrlDocs = await urlSequence.invoke(urlDocs);
+
+    // const pdfLoader = new PDFLoader("./test-pdf.pdf");
+    // const pdfDocs = await pdfLoader.load();
+
+    const saveVector = R.pipe(
+      async () => {
+        const mergedDocs = R.concat(
+          await pdfDocs("./test-pdf.pdf"),
+          await urlDocs()
+        );
+
+        return {
+          mergedDocs,
+        };
+      },
+      pipedObject => {
+        const embeddingsModel = new OpenAIEmbeddings({
+          openAIApiKey: process.env.OPENAI_API_KEY,
+          modelName: "text-embedding-ada-002",
+        });
+
+        return {
+          ...pipedObject,
+          embeddingsModel,
+        };
+      },
+      async pipedObject => {
+        const vectorStore = await HNSWLib.fromDocuments(
+          (
+            await pipedObject
+          ).mergedDocs,
+          pipedObject.embeddingsModel
+        );
+
+        return {
+          ...pipedObject,
+          vectorStore,
+        };
+      }
+    );
+
+    const mergedDocs = R.concat(
+      await pdfDocs("./test-pdf.pdf"),
+      await urlDocs()
+    );
 
     const embeddingsModel = new OpenAIEmbeddings({
       openAIApiKey: process.env.OPENAI_API_KEY,
@@ -375,13 +427,15 @@ const recursiveUrlLoader = async () => {
     const loadedVectorStore = await HNSWLib.load(dir, embeddingsModel);
     const retriever = loadedVectorStore.asRetriever();
 
-    retriever.getRelevantDocuments("Langchain");
+    const res = await retriever.getRelevantDocuments("Langchain");
+
+    console.log(res);
   } catch (error) {
     console.error(error);
   }
 };
 
-// recursiveUrlLoader();
+recursiveUrlLoader();
 
 const bobTest = async () => {
   const CUSTOM_QUESTION_GENERATOR_CHAIN_PROMPT = `Given the following conversation and a follow up question, return the conversation history excerpt that includes any relevant context to the question if it exists and rephrase the follow up question to be a standalone question.
@@ -459,4 +513,4 @@ const bobTest = async () => {
   console.log(res3);
 };
 
-bobTest();
+// bobTest();
