@@ -372,64 +372,72 @@ const recursiveUrlLoader = async () => {
     // const pdfDocs = await pdfLoader.load();
 
     const saveVector = R.pipe(
-      async () => {
+      async (path: string) => {
         const mergedDocs = R.concat(
           await pdfDocs("./test-pdf.pdf"),
           await urlDocs()
         );
 
         return {
+          path,
           mergedDocs,
         };
       },
-      pipedObject => {
+      async pipedObject => {
         const embeddingsModel = new OpenAIEmbeddings({
           openAIApiKey: process.env.OPENAI_API_KEY,
           modelName: "text-embedding-ada-002",
         });
 
         return {
-          ...pipedObject,
+          ...(await pipedObject),
           embeddingsModel,
         };
       },
       async pipedObject => {
+        // const {mergedDocs} = (await pipedObject).mergedDocs;
+        const {mergedDocs, embeddingsModel} = await pipedObject;
+
         const vectorStore = await HNSWLib.fromDocuments(
-          (
-            await pipedObject
-          ).mergedDocs,
-          pipedObject.embeddingsModel
+          mergedDocs,
+          embeddingsModel
         );
 
         return {
-          ...pipedObject,
+          ...(await pipedObject),
           vectorStore,
         };
+      },
+      async pipedObject => {
+        const {} = await pipedObject;
       }
     );
 
-    const mergedDocs = R.concat(
-      await pdfDocs("./test-pdf.pdf"),
-      await urlDocs()
-    );
+    // const mergedDocs = R.concat(
+    //   await pdfDocs("./test-pdf.pdf"),
+    //   await urlDocs()
+    // );
 
-    const embeddingsModel = new OpenAIEmbeddings({
-      openAIApiKey: process.env.OPENAI_API_KEY,
-      modelName: "text-embedding-ada-002",
-    });
-    const vectorStore = await HNSWLib.fromDocuments(
-      mergedDocs,
-      embeddingsModel
-    );
+    // const embeddingsModel = new OpenAIEmbeddings({
+    //   openAIApiKey: process.env.OPENAI_API_KEY,
+    //   modelName: "text-embedding-ada-002",
+    // });
+    // const vectorStore = await HNSWLib.fromDocuments(
+    //   mergedDocs,
+    //   embeddingsModel
+    // );
     const dir = "vector-store";
-    await vectorStore.save(path.join(process.cwd(), dir));
+    // await vectorStore.save(path.join(process.cwd(), dir));
+    const v = await saveVector();
 
-    const loadedVectorStore = await HNSWLib.load(dir, embeddingsModel);
-    const retriever = loadedVectorStore.asRetriever();
+    await v.save(path.join(process.cwd(), dir));
 
-    const res = await retriever.getRelevantDocuments("Langchain");
+    // const loadedVectorStore = await HNSWLib.load(dir, embeddingsModel);
+    // const retriever = loadedVectorStore.asRetriever();
 
-    console.log(res);
+    // const res = await retriever.getRelevantDocuments("Langchain");
+
+    // console.log(res);
   } catch (error) {
     console.error(error);
   }
