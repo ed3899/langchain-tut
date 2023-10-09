@@ -372,14 +372,14 @@ const recursiveUrlLoader = async () => {
     // const pdfDocs = await pdfLoader.load();
 
     const saveVector = R.pipe(
-      async (path: string) => {
+      async (pathToSave: string) => {
         const mergedDocs = R.concat(
           await pdfDocs("./test-pdf.pdf"),
           await urlDocs()
         );
 
         return {
-          path,
+          pathToSave,
           mergedDocs,
         };
       },
@@ -395,7 +395,6 @@ const recursiveUrlLoader = async () => {
         };
       },
       async pipedObject => {
-        // const {mergedDocs} = (await pipedObject).mergedDocs;
         const {mergedDocs, embeddingsModel} = await pipedObject;
 
         const vectorStore = await HNSWLib.fromDocuments(
@@ -409,7 +408,8 @@ const recursiveUrlLoader = async () => {
         };
       },
       async pipedObject => {
-        const {} = await pipedObject;
+        const {vectorStore, pathToSave} = await pipedObject;
+        await vectorStore.save(pathToSave);
       }
     );
 
@@ -428,9 +428,7 @@ const recursiveUrlLoader = async () => {
     // );
     const dir = "vector-store";
     // await vectorStore.save(path.join(process.cwd(), dir));
-    const v = await saveVector();
-
-    await v.save(path.join(process.cwd(), dir));
+    await saveVector(path.join(process.cwd(), dir));
 
     // const loadedVectorStore = await HNSWLib.load(dir, embeddingsModel);
     // const retriever = loadedVectorStore.asRetriever();
